@@ -1,15 +1,16 @@
-import express, { Express, Request, Response } from 'express';
-import dotenv from 'dotenv';
+import express, { Express, Request, Response } from "express";
+import dotenv from "dotenv";
 dotenv.config(); // config variable environment
-import bodyParser from 'body-parser';
-import cookieParser from 'cookie-parser';
-import cors from 'cors';
-import morgan from 'morgan';
+import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import morgan from "morgan";
 import userRoute from "./src/routes/user-route";
 import postRoute from "./src/routes/post-route";
+import { dbPool } from "./src/utils/connect-pg";
 
 const app: Express = express();
-const port = process.env.PORT || 8000;
+const port = process.env.PORT || 3001;
 
 app.use(bodyParser.urlencoded({ extended: false })); // parse body HTTP POST request
 app.use(bodyParser.json());
@@ -17,15 +18,14 @@ app.use(cookieParser());
 app.use(cors({ origin: true })); // allow share resources between domains
 app.use(morgan("short")); // show log HTTP request in console
 
+dbPool.connect();
 
-
-app.get('/', (req: Request, res: Response) => {
-  res.send('Welcome to Fotobook');
+app.get("/", (req: Request, res: Response) => {
+  res.send("Welcome to Fotobook");
 });
 
-app.use('/api/users', userRoute);
-app.use('/api/posts', postRoute);
-
+app.use("/api/users", userRoute);
+app.use("/api/posts", postRoute);
 
 app.listen(port, () => {
   console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
