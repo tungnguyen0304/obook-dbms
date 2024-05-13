@@ -22,7 +22,7 @@ services:
       - .:/usr/src/app/node_modules
       - /usr/src/app/node_modules
     environment:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/obook
+      DATABASE_URL: postgres://postgres:postgres@postgres/obook
       PORT: 3001
       SALT_ROUND: 12
       JWT_SECRET_KEY: minhbao
