@@ -7,7 +7,7 @@ import cors from "cors";
 import morgan from "morgan";
 import userRoute from "./src/routes/user-route";
 import postRoute from "./src/routes/post-route";
-import { dbPool } from "./src/utils/connect-pg";
+import { dbClient } from "./src/utils/connect-pg";
 
 const app: Express = express();
 const port = process.env.PORT || 3001;
@@ -18,15 +18,16 @@ app.use(cookieParser());
 app.use(cors({ origin: true })); // allow share resources between domains
 app.use(morgan("short")); // show log HTTP request in console
 
-dbPool.connect();
-
 app.get("/", (req: Request, res: Response) => {
   res.send("Welcome to Fotobook");
 });
+
+dbClient.connect();
 
 app.use("/api/users", userRoute);
 app.use("/api/posts", postRoute);
 
 app.listen(port, () => {
+  console.log(`database URL = ${process.env.DATABASE_URL}`);
   console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
 });

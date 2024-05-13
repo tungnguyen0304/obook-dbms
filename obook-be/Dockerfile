@@ -2,8 +2,6 @@ FROM node:18-alpine
 
 WORKDIR /usr/src/app
 
-RUN npm install nodemon -g
-
 RUN npm install -g ts-node
 
 # Install app dependencies
@@ -13,4 +11,7 @@ RUN npm install
 # Bundle app source
 COPY . .
 
-CMD [ "npm", "start" ]
+RUN npm run build
+
+
+CMD [ "npm","run", "start" ]

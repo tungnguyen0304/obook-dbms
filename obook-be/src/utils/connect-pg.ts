@@ -1,6 +1,5 @@
-import { Pool } from "pg";
+import { Client } from "pg";
 
-export const dbPool = new Pool({
-  //   connectionString: `${process.env.DATABASE_URL}`,
-  connectionString: `postgres://postgres:postgres@localhost:5432/obook`,
+export const dbClient = new Client({
+  connectionString: `${process.env.DATABASE_URL}`,
 });
