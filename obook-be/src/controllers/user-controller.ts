@@ -8,6 +8,7 @@ import { message } from "antd";
 class UserController {
   static createUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      console.log("Create user");
       let { firstName, lastName, email, password, dob, sex } = req.body;
       await bcrypt.hash(password, parseInt(`${process.env.SALT_ROUND}`), async (err, hash) => {
         // Store hash in your password DB.
@@ -30,6 +31,7 @@ class UserController {
         }
       });
     } catch (err) {
+      console.log(err);
       next(err);
     }
   };

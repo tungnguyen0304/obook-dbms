@@ -25,7 +25,7 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres/obook
       PORT: 3001
       SALT_ROUND: 12
-      JWT_SECRET_KEY: minhbao
+      JWT_SECRET_KEY: phuhung
       CLOUDINARY_API_KEY: 549695228267364
       CLOUDINARY_API_SECRET: Q8ksXeJe_kNaVpAEeJLkjYkZob
     networks: 

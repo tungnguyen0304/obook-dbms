@@ -8,104 +8,128 @@ import { StatusCodes } from "http-status-codes";
 import checkFollow from "../helpers/check-follow";
 import getList from "../helpers/get-list";
 import cloudinary from "../utils/connect-cloudinary";
+import { dbClient } from "../utils/connect-pg";
+import { text } from "body-parser";
 
 class UserService {
   static createUser = async (userInfor: IUser): Promise<IResponse> => {
     try {
-      //   if (
-      //     userInfor.email == "" ||
-      //     userInfor.password == "" ||
-      //     userInfor.firstName == "" ||
-      //     userInfor.lastName == ""
-      //   ) {
-      //     return {
-      //       type: "Error",
-      //       code: StatusCodes.BAD_REQUEST,
-      //       message: "Invalid input error",
-      //     };
-      //   }
-      //   const existUser = await neo4j.run(`MATCH (n:User{email:'${userInfor.email}'}) RETURN n`);
-      //   if (existUser && existUser.records.length > 0) {
-      //     return {
-      //       type: "Error",
-      //       code: StatusCodes.BAD_REQUEST,
-      //       message: "Email already exists",
-      //     };
-      //   }
+      console.log("create user service");
+      if (
+        userInfor.email == "" ||
+        userInfor.password == "" ||
+        userInfor.firstName == "" ||
+        userInfor.lastName == ""
+      ) {
+        return {
+          type: "Error",
+          code: StatusCodes.BAD_REQUEST,
+          message: "Invalid input error",
+        };
+      }
+      const existUser = await dbClient.query({
+        text: `SELECT * FROM users WHERE email = $1;`,
+        values: [userInfor.email],
+      });
+      if (existUser && existUser.rowCount) {
+        console.log("exist user");
+        return {
+          type: "Error",
+          code: StatusCodes.BAD_REQUEST,
+          message: "Email already exists",
+        };
+      }
 
-      //   const id: String = generateUniqueId({
-      //     length: 32,
-      //     useLetters: true,
-      //   });
+      const id: String = generateUniqueId({
+        length: 32,
+        useLetters: true,
+      });
 
-      //   const recordUser = await neo4j.run(
-      //     `CREATE (n:User{user_id:'${id}',lastName: $lastName,firstName: $firstName,email:$email,
-      //             password: $password, avatar: '', dob: $dob, sex: $sex, refreshToken: ''}) RETURN n`,
-      //     userInfor
-      //   );
+      const recordUser = await dbClient.query({
+        text: `INSERT INTO users
+        (user_id, last_name, first_name, email, password, avatar, dob, sex, refreshToken)
+        VALUES
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;`,
+        values: [
+          id,
+          userInfor.lastName,
+          userInfor.firstName,
+          userInfor.email,
+          userInfor.password,
+          "",
+          userInfor.dob,
+          userInfor.sex,
+          "",
+        ],
+      });
 
-      //   const newUser = await getValue(recordUser.records[0]);
+      const newUser = recordUser.rows[0];
 
-      //   if (newUser) {
-      //     newUser.password = "hidden";
-      //     const refreshToken = await UserService.generateRefreshToken(id);
-      //     return {
-      //       type: "Success",
-      //       code: StatusCodes.OK,
-      //       message: {
-      //         ...newUser,
-      //         refreshToken,
-      //         accessToken: UserService.generateAccessToken(id),
-      //       },
-      //     };
-      //   }
-
+      if (newUser) {
+        console.log("new user ", newUser);
+        newUser.password = "hidden";
+        const refreshToken = await UserService.generateRefreshToken(id);
+        return {
+          type: "Success",
+          code: StatusCodes.OK,
+          message: {
+            ...newUser,
+            refreshToken,
+            accessToken: UserService.generateAccessToken(id),
+          },
+        };
+      }
+      console.log("error");
       return {
         type: "Error",
         code: StatusCodes.INTERNAL_SERVER_ERROR,
         message: "Server error",
       };
     } catch (error) {
+      console.log(error);
       throw error;
     }
   };
 
   static loginUser = async ({ email, password }: IUser): Promise<IResponse> => {
     try {
-      // const recordUser = await neo4j.run(`MATCH (n:User {email:'${email}'}) RETURN n`);
+      const recordUser = await dbClient.query({
+        text: `SELECT * FROM users WHERE email = $1;`,
+        values: [email],
+      });
 
-      // if (recordUser && recordUser.records.length == 0) {
-      //   return {
-      //     type: "Error",
-      //     code: StatusCodes.BAD_REQUEST,
-      //     message: "Account does not exist",
-      //   };
-      // }
+      if (recordUser && !recordUser.rowCount) {
+        return {
+          type: "Error",
+          code: StatusCodes.BAD_REQUEST,
+          message: "Account does not exist",
+        };
+      }
 
-      // if (recordUser && recordUser.records.length == 1) {
-      //   let user = await getValue(recordUser.records[0]);
-      //   const refreshToken = await UserService.generateRefreshToken(user.user_id);
-      //   const result = await brycpt.compare(String(password), user?.password);
-      //   if (result) {
-      //     user.password = "hidden";
-      //     //user.refreshToken='hidden';
-      //     return {
-      //       type: "Success",
-      //       code: StatusCodes.OK,
-      //       message: {
-      //         ...user,
-      //         refreshToken,
-      //         accessToken: UserService.generateAccessToken(user.user_id),
-      //       },
-      //     };
-      //   } else {
-      //     return {
-      //       type: "Error",
-      //       code: StatusCodes.BAD_REQUEST,
-      //       message: "The wrong password",
-      //     };
-      //   }
-      // }
+      if (recordUser && recordUser.rowCount == 1) {
+        let user = recordUser.rows[0];
+        const refreshToken = await UserService.generateRefreshToken(user.user_id);
+        const result = await brycpt.compare(String(password), user?.password);
+        if (result) {
+          user.password = "hidden";
+          //user.refreshToken='hidden';
+          return {
+            type: "Success",
+            code: StatusCodes.OK,
+            message: {
+              ...user,
+              refreshToken,
+              accessToken: UserService.generateAccessToken(user.user_id),
+            },
+          };
+        } else {
+          return {
+            type: "Error",
+            code: StatusCodes.BAD_REQUEST,
+            message: "The wrong password",
+          };
+        }
+      }
       return {
         type: "Error",
         code: StatusCodes.INTERNAL_SERVER_ERROR,
@@ -128,14 +152,13 @@ class UserService {
 
   static generateRefreshToken = async (id: String): Promise<String> => {
     try {
-      // const refreshToken = jwt.sign({ id }, `${process.env.JWT_SECRET_KEY}`, {
-      //   expiresIn: "3d",
-      // });
-      // await neo4j.run(
-      //   `MATCH (n:User{user_id: "${id}"}) SET n.refreshToken= '${refreshToken}' RETURN n`
-      // );
-      // return refreshToken;
-      return "";
+      const refreshToken = jwt.sign({ id }, `${process.env.JWT_SECRET_KEY}`, {
+        expiresIn: "3d",
+      });
+      await dbClient.query(
+        `UPDATE users SET refreshToken = '${refreshToken}' WHERE user_id = '${id}' RETURNING *;`
+      );
+      return refreshToken;
     } catch (err) {
       throw err;
     }
@@ -284,22 +307,22 @@ class UserService {
 
   static getUserByToken = async (token: string) => {
     try {
-      // if (token) {
-      //   const decoded = jwt.verify(token, `${process.env.JWT_SECRET_KEY}`) as JwtPayload;
-      //   const userRecord = await neo4j.run(
-      //     `MATCH (user: User {user_id: "${decoded.id}"}) RETURN user`
-      //   );
+      if (token) {
+        const decoded = jwt.verify(token, `${process.env.JWT_SECRET_KEY}`) as JwtPayload;
+        const userRecord = await dbClient.query(
+          `SELECT * FROM users WHERE user_id = '${decoded.id}'`
+        );
 
-      //   const user = getValue(userRecord.records[0], "user");
+        const user = userRecord.rows[0];
 
-      //   return {
-      //     type: "Success",
-      //     code: StatusCodes.OK,
-      //     message: {
-      //       ...user,
-      //     },
-      //   };
-      // }
+        return {
+          type: "Success",
+          code: StatusCodes.OK,
+          message: {
+            ...user,
+          },
+        };
+      }
 
       return {
         type: "Error",
@@ -318,17 +341,17 @@ class UserService {
   static updateUser = async (user_id: string, avatar: string) => {
     try {
       // update features delete avatar in cloudinary in the future
-      // const resultUploadAvatar = await cloudinary.uploader.upload(avatar);
-      // const recordUser = await neo4j.run(`
-      //           MATCH (user: User{user_id: '${user_id}'}) SET user.avatar = '${resultUploadAvatar.secure_url}' RETURN user
-      //       `);
-      // let user = await getValue(recordUser.records[0], "user");
+      const resultUploadAvatar = await cloudinary.uploader.upload(avatar);
+      const recordUser = await dbClient.query(`
+                UPDATE users SET avatar = '${resultUploadAvatar.secure_url}' WHERE user_id = '${user_id}' RETURN *
+            `);
+      let user = recordUser.rows[0];
 
       return {
         type: "Success",
         code: StatusCodes.OK,
         message: {
-          // user,
+          user,
         },
       };
     } catch (err) {

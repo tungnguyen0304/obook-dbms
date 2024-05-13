@@ -22,12 +22,11 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Welcome to Fotobook");
 });
 
-dbClient.connect();
-
 app.use("/api/users", userRoute);
 app.use("/api/posts", postRoute);
 
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`database URL = ${process.env.DATABASE_URL}`);
+  await dbClient.connect();
   console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
 });
